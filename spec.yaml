@@ -1,0 +1,79 @@
+schemaVersion: "1"
+kind: mixin
+name: yt-transcript
+displayName: YouTube Transcript Toolkit
+description: >-
+  Adds yt-dlp, ffmpeg, and a VTT-to-text converter to a sandbox so an agent can
+  fetch YouTube videos, pull subtitles or audio, and turn them into clean plain
+  text for summarization or analysis. Layer it onto any agent kit.
+
+# Tools installed once when the sandbox is created.
+commands:
+  install:
+    # ffmpeg (+ ffprobe) for audio extraction and media post-processing.
+    - command: "apt-get update && apt-get install -y --no-install-recommends ffmpeg"
+      description: Install ffmpeg for audio extraction and media processing.
+    # yt-dlp from PyPI into the user's ~/.local/bin (already on PATH).
+    - command: "python3 -m pip install --user --upgrade yt-dlp"
+      user: "1000"
+      description: Install yt-dlp (YouTube / media downloader).
+    # Make the bundled VTT converter executable regardless of how files/ copies it.
+    - command: "chmod +x /home/agent/.local/bin/vtt-to-text"
+      user: "1000"
+      description: Make the vtt-to-text converter executable.
+
+network:
+  allowedDomains:
+    # YouTube pages + metadata
+    - "www.youtube.com:443"
+    - "youtube.com:443"
+    - "m.youtube.com:443"
+    # Media streams (video/audio fragments and playback redirects)
+    - "*.googlevideo.com"
+    # Thumbnails and channel artwork
+    - "i.ytimg.com:443"
+    - "ytimg.com:443"
+    - "yt3.ggpht.com:443"
+    # YouTube / Google Data APIs (metadata, caption listings)
+    - "www.googleapis.com:443"
+    - "googleapis.com:443"
+    # Tool installation: yt-dlp from PyPI, ffmpeg from apt mirrors
+    # (bare domains so apt over http:80 is allowed too)
+    - "pypi.org:443"
+    - "files.pythonhosted.org:443"
+    - "deb.debian.org"
+    - "security.debian.org"
+    - "archive.ubuntu.com"
+    - "security.ubuntu.com"
+
+# Appended to the agent's memory file (e.g. CLAUDE.md) so the agent knows the
+# tools exist and how to use them. Applied when the base agent kit sets aiFilename.
+agentContext: |
+  ## Video transcript tooling
+
+  This sandbox has `yt-dlp`, `ffmpeg`/`ffprobe`, and a `vtt-to-text` command for
+  turning YouTube videos into clean plain text.
+
+  Prefer subtitles over transcription — they are faster, free, and need no model:
+
+  1. Fetch subtitles without downloading the video:
+     ```
+     yt-dlp --write-auto-subs --write-subs --sub-langs en --sub-format vtt \
+       --skip-download -o '%(title)s.%(ext)s' "<URL>"
+     ```
+  2. Convert the resulting `.vtt` to plain text:
+     ```
+     vtt-to-text "<title>.en.vtt"
+     ```
+     This strips the WEBVTT header, timestamps, and inline word-timing tags, and
+     collapses YouTube's duplicated rolling-caption lines.
+
+  If a video has no usable subtitles, download the audio and transcribe it:
+  ```
+  yt-dlp -x --audio-format m4a -o '%(title)s.%(ext)s' "<URL>"
+  ```
+  `ffmpeg`/`ffprobe` are available for any resampling or format conversion your
+  transcription step needs.
+
+  Useful yt-dlp flags: `--list-subs` (see available caption tracks),
+  `--dump-json --skip-download` (metadata only), `-f` (format selection).

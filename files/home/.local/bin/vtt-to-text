@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Convert a WebVTT subtitle file (e.g. from yt-dlp) to clean plain text.
+
+Strips the WEBVTT header, cue timestamps, and inline word-timing tags, and
+collapses the duplicated rolling-caption lines that YouTube's auto-subtitles
+emit (each visible line is repeated in the following cue).
+"""
+
+import re
+import sys
+from pathlib import Path
+
+TIMESTAMP_RE = re.compile(r"^\d{2}:\d{2}:\d{2}")
+TAG_RE = re.compile(r"<[^>]+>")
+
+
+def vtt_to_text(vtt_path: Path) -> str:
+    output_lines: list[str] = []
+
+    for line in vtt_path.read_text(encoding="utf-8").splitlines():
+        # Skip header/metadata, cue timing lines, and blank lines.
+        if line.startswith(("WEBVTT", "Kind:", "Language:")):
+            continue
+        if TIMESTAMP_RE.match(line):
+            continue
+        if not line.strip():
+            continue
+
+        # Drop inline tags like <00:00:01.000><c> ... </c>.
+        clean = TAG_RE.sub("", line).strip()
+        if not clean:
+            continue
+
+        # Skip a line that just repeats the immediately preceding one
+        # (YouTube auto-subs repeat the last visible line in the next cue).
+        if output_lines and output_lines[-1] == clean:
+            continue
+
+        output_lines.append(clean)
+
+    return " ".join(output_lines)
+
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print("Usage: vtt-to-text <file.vtt> [output.txt]", file=sys.stderr)
+        sys.exit(1)
+
+    vtt_path = Path(sys.argv[1])
+    out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else vtt_path.with_suffix(".txt")
+
+    clean = vtt_to_text(vtt_path)
+    out_path.write_text(clean, encoding="utf-8")
+    print(f"Written {len(clean):,} chars to {out_path}")
+
+
+if __name__ == "__main__":
+    main()
