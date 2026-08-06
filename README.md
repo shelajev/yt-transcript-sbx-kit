@@ -16,8 +16,18 @@ Because it is a mixin, you layer it onto whichever agent kit you run.
 
 ## Quick start
 
+To use `claude` sandbox template with `yt-transcrip` kit.
+
 ```bash
-sbx run \
+sbx run claude \
+  --kit git+https://github.com/shelajev/yt-transcript-sbx-kit.git \
+  yt-transcript .
+```
+
+Or, if you created a special kit for your favorite agent setting skills and other files
+
+```bash
+sbx run claude \
   --kit git+https://github.com/shelajev/yt-transcript-sbx-kit.git \
   --kit claude \
   yt-transcript .
