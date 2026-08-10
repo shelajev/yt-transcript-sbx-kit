@@ -10,8 +10,12 @@ description: >-
 # Tools installed once when the sandbox is created.
 commands:
   install:
+    # Keep package-index refresh separate from the larger ffmpeg install so
+    # each setup hook stays within the sandbox command time budget.
+    - command: "apt-get update"
+      description: Refresh package indexes for media-tool installation.
     # ffmpeg (+ ffprobe) for audio extraction and media post-processing.
-    - command: "apt-get update && apt-get install -y --no-install-recommends ffmpeg"
+    - command: "apt-get install -y --no-install-recommends ffmpeg"
       description: Install ffmpeg for audio extraction and media processing.
     # The sandbox image uses PEP 668's externally-managed Python environment.
     # This is an isolated sandbox, so explicitly permit an image-level install.
@@ -46,6 +50,8 @@ network:
     - "security.debian.org"
     - "archive.ubuntu.com"
     - "security.ubuntu.com"
+    # Ubuntu ARM templates use the ports mirror.
+    - "ports.ubuntu.com"
 
 # Appended to the agent's memory file (e.g. CLAUDE.md) so the agent knows the
 # tools exist and how to use them. Applied when the base agent kit sets aiFilename.

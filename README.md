@@ -16,11 +16,13 @@ Because it is a mixin, you layer it onto whichever agent kit you run.
 
 ## Companion agent skill
 
-The kit includes a standalone `youtube-analyzer` skill. Docker Sandboxes exposes
-it through its shared agent-skills mount, so compatible agents such as Claude
-and Codex can discover it. The skill uses the tools this kit provides but never
-installs or upgrades them. Ask your agent to use it for a YouTube URL when you
-want a timestamped transcript, structural breakdown, hook analysis, key
+The kit includes a standalone `youtube-analyzer` skill at the agent-neutral
+path `~/.agents/skills/youtube-analyzer/`. Docker Sandboxes exposes this shared
+location to compatible agents such as Codex and Antigravity. A small Claude
+compatibility shim points to the same implementation, so there is one analysis
+workflow regardless of agent. The skill uses the tools this kit provides but
+never installs or upgrades them. Ask your agent to use it for a YouTube URL when
+you want a timestamped transcript, structural breakdown, hook analysis, key
 moments, or a reusable script formula.
 
 ## Quick start
@@ -62,7 +64,8 @@ Handy `yt-dlp` flags: `--list-subs` (see available caption tracks),
 ## How it works
 
 - **Install (once at sandbox creation):**
-  - `apt-get install -y ffmpeg` — installs `ffmpeg` and `ffprobe`.
+  - `apt-get update`, then `apt-get install -y ffmpeg` — installs `ffmpeg` and
+    `ffprobe` in separate setup steps so both complete reliably.
   - `pip install --upgrade --break-system-packages yt-dlp` — installs `yt-dlp`
     on the sandbox's shared executable path. The flag is required by the
     Debian/Python base image's PEP 668 protection; it affects only the isolated
@@ -84,7 +87,7 @@ The kit allowlists only what the workflow needs:
 | Thumbnails / artwork | `i.ytimg.com`, `ytimg.com`, `yt3.ggpht.com` |
 | YouTube / Google Data APIs | `www.googleapis.com`, `googleapis.com` |
 | Tool install (yt-dlp) | `pypi.org`, `files.pythonhosted.org` |
-| Tool install (ffmpeg via apt) | `deb.debian.org`, `security.debian.org`, `archive.ubuntu.com`, `security.ubuntu.com` |
+| Tool install (ffmpeg via apt) | `deb.debian.org`, `security.debian.org`, `archive.ubuntu.com`, `security.ubuntu.com`, `ports.ubuntu.com` |
 
 If you need to reach other sites (a different video host, your own services),
 fork the kit and extend `network.allowedDomains` in `spec.yaml`.
