@@ -28,15 +28,43 @@ from interpretation and can add a primary-source fact-check when requested.
 
 ## Quick start
 
+The transcript kit is a mixin: name the agent to run, then add this kit with
+`--kit`. Choose one of these examples.
+
+### Claude
+
 ```bash
-sbx run \
+sbx run --name yt-claude \
   --kit git+https://github.com/shelajev/yt-transcript-sbx-kit.git \
-  --kit claude \
-  yt-transcript .
+  claude .
 ```
 
-The first `--kit` adds the toolchain; the second is the agent you want to run
-(swap `claude` for any agent kit).
+### Codex
+
+```bash
+sbx run --name yt-codex \
+  --kit git+https://github.com/shelajev/yt-transcript-sbx-kit.git \
+  codex .
+```
+
+### Antigravity
+
+```bash
+sbx run --name yt-antigravity \
+  --kit git+https://github.com/shelajev/agy-sbx-kit.git \
+  --kit git+https://github.com/shelajev/yt-transcript-sbx-kit.git \
+  agy .
+```
+
+Antigravity asks you to complete its Google OAuth flow on first use; see the
+[Antigravity kit](https://github.com/shelajev/agy-sbx-kit) for that flow.
+
+Each `--name` creates a persistent sandbox. Reattach without supplying an agent
+or kits again:
+
+```bash
+sbx run --name yt-codex
+```
 
 ## What it does
 
@@ -96,24 +124,24 @@ fork the kit and extend `network.allowedDomains` in `spec.yaml`.
 ## Smoke test
 
 ```bash
-sbx exec yt-transcript -- sh -lc 'yt-dlp --version && ffmpeg -version | head -1 && vtt-to-text 2>&1 | head -1'
+sbx exec yt-claude -- sh -lc 'yt-dlp --version && ffmpeg -version | head -1 && vtt-to-text 2>&1 | head -1'
 ```
 
 You should see a yt-dlp version, an ffmpeg banner, and the `vtt-to-text` usage line.
 
 ## Local clone
 
-If you clone this repo, `run.sh` launches a sandbox using the local kit path
-(layered onto the `claude` agent kit by default):
+If you clone this repo, `run.sh` launches Claude with the local kit path. Pass
+the workspace as its first argument:
 
 ```bash
-./run.sh yt-transcript
+./run.sh .
 ```
 
-Pass any sandbox name as the first argument:
+Use a different built-in agent by setting `SBX_AGENT`:
 
 ```bash
-./run.sh my-sandbox
+SBX_AGENT=codex ./run.sh .
 ```
 
 ## License
