@@ -1,6 +1,6 @@
 ---
 name: youtube-analyzer
-description: Analyze a YouTube video from captions when a user asks for a transcript, summary, structure, hook, key moments, or script formula. Requires the yt-transcript sandbox kit.
+description: Analyze or fact-check a YouTube video from captions when a user asks for a transcript, summary, structure, hook, key moments, script formula, or verification of video claims. Requires the yt-transcript sandbox kit.
 ---
 
 # YouTube Analyzer

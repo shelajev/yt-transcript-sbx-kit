@@ -23,7 +23,8 @@ compatibility shim points to the same implementation, so there is one analysis
 workflow regardless of agent. The skill uses the tools this kit provides but
 never installs or upgrades them. Ask your agent to use it for a YouTube URL when
 you want a timestamped transcript, structural breakdown, hook analysis, key
-moments, or a reusable script formula.
+moments, or a reusable script formula. It labels transcript evidence separately
+from interpretation and can add a primary-source fact-check when requested.
 
 ## Quick start
 

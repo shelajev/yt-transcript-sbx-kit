@@ -1,6 +1,6 @@
 ---
 name: youtube-analyzer
-description: Analyze a YouTube video from its captions when a user provides a YouTube URL and asks for a transcript, summary, structure, hook, key moments, script formula, or reusable content strategy. Requires yt-dlp and Python 3, normally supplied by the yt-transcript sandbox kit.
+description: Analyze or fact-check a YouTube video from its captions when a user provides a YouTube URL and asks for a transcript, summary, structure, hook, key moments, script formula, reusable content strategy, or verification of video claims. Requires yt-dlp and Python 3, normally supplied by the yt-transcript sandbox kit.
 ---
 
 # YouTube Analyzer
@@ -56,19 +56,49 @@ request.
 
 Preserve timestamps and distinguish speaker claims from the analysis.
 
-## 5. Deliver the analysis
+## 5. Keep evidence and interpretation separate
+
+Treat the transcript as evidence that a speaker *said* something, not proof
+that it is true. For every material conclusion, use one of these labels:
+
+- **Transcript-backed** — a faithful paraphrase or a short exact quote, with
+  timestamp(s).
+- **Inference** — an interpretation drawn from two or more transcript-backed
+  observations; state the reasoning briefly.
+- **Externally verified** — a fact checked against a primary source, with a
+  direct link and the source's publication date when available.
+
+Use external verification only when the user asks to fact-check, when factual
+accuracy is central to the request, or when a speaker claim would otherwise
+materially change the conclusion. Prefer original papers, official documents,
+or primary data. Do not use an external source to silently replace or launder a
+speaker claim: report a material disagreement clearly.
+If web access is unavailable, say that external verification could not be
+performed; do not install tools or otherwise change the environment.
+
+Label automated captions as such when that is how they were fetched. Flag a
+likely caption error rather than treating an ambiguous word as evidence.
+
+## 6. Deliver the analysis
 
 Return:
 
 1. A header with title, channel, duration, views/likes when available, and
    caption language.
 2. One sentence describing the video's actual purpose.
-3. The hook at the opening timestamp: an exact short quote and the hook type.
+3. The hook at the opening timestamp: a short exact quote, its timestamp, and
+   the hook type.
 4. The real structural beats in speaker order, each with timestamps.
 5. At most ten key moments as `Timestamp | What happens | Why it matters`.
-6. Three to five short, exact, timestamped quotes.
-7. A reusable formula with each beat's approximate duration.
-8. Three to five specific takeaways.
+6. An **evidence map** for the main conclusions: timestamp(s), the
+   transcript-backed observation, and any clearly labelled inference.
+7. Three to five short, exact, timestamped quotes.
+8. A reusable formula with each beat's approximate duration.
+9. Three to five specific takeaways.
+10. If external verification was requested or performed, a separate
+    **Fact-check** section with primary-source links; otherwise, state that the
+    analysis is based on the video's captions.
 
 Do not manufacture timestamps, quotes, captions, or a summary when captions
-are unavailable. Flag likely caption errors when they affect meaning.
+are unavailable. Do not present speaker claims as established fact merely
+because they appear in the video.
