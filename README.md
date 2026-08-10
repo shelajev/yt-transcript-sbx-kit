@@ -14,13 +14,14 @@ knows the tools are there and how to use them.
 
 Because it is a mixin, you layer it onto whichever agent kit you run.
 
-## Companion Claude skill
+## Companion agent skill
 
-When used with the Claude agent kit, this kit also places a standalone
-`youtube-analyzer` skill in `~/.claude/skills/`. It uses the tools this kit
-provides but never installs or upgrades them. Ask Claude to use the skill for a
-YouTube URL when you want a timestamped transcript, structural breakdown, hook
-analysis, key moments, or a reusable script formula.
+The kit includes a standalone `youtube-analyzer` skill. Docker Sandboxes exposes
+it through its shared agent-skills mount, so compatible agents such as Claude
+and Codex can discover it. The skill uses the tools this kit provides but never
+installs or upgrades them. Ask your agent to use it for a YouTube URL when you
+want a timestamped transcript, structural breakdown, hook analysis, key
+moments, or a reusable script formula.
 
 ## Quick start
 
