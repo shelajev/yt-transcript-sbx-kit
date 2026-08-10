@@ -1,4 +1,4 @@
-schemaVersion: "1"
+schemaVersion: "2"
 kind: mixin
 name: yt-transcript
 displayName: YouTube Transcript Toolkit
@@ -13,17 +13,19 @@ commands:
     # ffmpeg (+ ffprobe) for audio extraction and media post-processing.
     - command: "apt-get update && apt-get install -y --no-install-recommends ffmpeg"
       description: Install ffmpeg for audio extraction and media processing.
-    # yt-dlp from PyPI into the user's ~/.local/bin (already on PATH).
-    - command: "python3 -m pip install --user --upgrade yt-dlp"
-      user: "1000"
+    # The sandbox image uses PEP 668's externally-managed Python environment.
+    # This is an isolated sandbox, so explicitly permit an image-level install.
+    # Leaving out --user places the yt-dlp executable on every agent's PATH.
+    - command: "python3 -m pip install --upgrade --break-system-packages yt-dlp"
       description: Install yt-dlp (YouTube / media downloader).
     # Make the bundled VTT converter executable regardless of how files/ copies it.
     - command: "chmod +x /home/agent/.local/bin/vtt-to-text"
       user: "1000"
       description: Make the vtt-to-text converter executable.
 
-network:
-  allowedDomains:
+caps:
+  network:
+    allow:
     # YouTube pages + metadata
     - "www.youtube.com:443"
     - "youtube.com:443"

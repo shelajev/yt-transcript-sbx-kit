@@ -54,8 +54,10 @@ Handy `yt-dlp` flags: `--list-subs` (see available caption tracks),
 
 - **Install (once at sandbox creation):**
   - `apt-get install -y ffmpeg` — installs `ffmpeg` and `ffprobe`.
-  - `pip install --user --upgrade yt-dlp` — installs `yt-dlp` into `~/.local/bin`
-    (already on PATH).
+  - `pip install --upgrade --break-system-packages yt-dlp` — installs `yt-dlp`
+    on the sandbox's shared executable path. The flag is required by the
+    Debian/Python base image's PEP 668 protection; it affects only the isolated
+    sandbox.
   - `chmod +x ~/.local/bin/vtt-to-text` — the converter shipped in this kit.
 - **Files:** `files/home/.local/bin/vtt-to-text` is copied into the sandbox home
   directory so it lands on PATH.
