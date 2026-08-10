@@ -31,6 +31,11 @@ from interpretation and can add a primary-source fact-check when requested.
 The transcript kit is a mixin: name the agent to run, then add this kit with
 `--kit`. Choose one of these examples.
 
+`claude`, `codex`, and the other names listed by `sbx run --help` are built-in
+agents, so they are positional arguments—not kit references. A `--kit` flag
+adds a declarative layer such as this toolchain or a custom agent kit. Do not
+write `--kit claude` or `--kit codex`.
+
 ### Claude
 
 ```bash
