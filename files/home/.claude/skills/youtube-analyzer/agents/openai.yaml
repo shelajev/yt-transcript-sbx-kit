@@ -1,0 +1,4 @@
+interface:
+  display_name: "YouTube Analyzer"
+  short_description: "Analyze YouTube videos from captions"
+  default_prompt: "Use $youtube-analyzer to analyze this YouTube video: <URL>."

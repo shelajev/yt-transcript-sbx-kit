@@ -1,3 +1,9 @@
 .DS_Store
 *.zip
 .claude/
+__pycache__/
+
+# Package companion Claude skills with the kit.
+!files/home/
+!files/home/.claude/
+!files/home/.claude/**

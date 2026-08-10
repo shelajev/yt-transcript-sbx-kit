@@ -1,4 +1,4 @@
-schemaVersion: "2"
+schemaVersion: "1"
 kind: mixin
 name: yt-transcript
 displayName: YouTube Transcript Toolkit
@@ -23,9 +23,8 @@ commands:
       user: "1000"
       description: Make the vtt-to-text converter executable.
 
-caps:
-  network:
-    allow:
+network:
+  allowedDomains:
     # YouTube pages + metadata
     - "www.youtube.com:443"
     - "youtube.com:443"
