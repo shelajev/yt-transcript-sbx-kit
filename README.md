@@ -21,10 +21,11 @@ path `~/.agents/skills/youtube-analyzer/`. Docker Sandboxes exposes this shared
 location to compatible agents such as Codex and Antigravity. A small Claude
 compatibility shim points to the same implementation, so there is one analysis
 workflow regardless of agent. The skill uses the tools this kit provides but
-never installs or upgrades them. Ask your agent to use it for a YouTube URL when
-you want a timestamped transcript, structural breakdown, hook analysis, key
-moments, or a reusable script formula. It labels transcript evidence separately
-from interpretation and can add a primary-source fact-check when requested.
+never installs or upgrades them. Ask your agent to summarize or analyze a YouTube
+URL to get self-contained, illustrated notes with a timestamped walkthrough, key
+moments, and useful video frames. Ask it to fact-check or verify the video to get
+a claim-by-claim report grounded in primary sources. The skill keeps transcript
+evidence, interpretation, and external verification separate.
 
 ## Quick start
 
