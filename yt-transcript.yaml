@@ -1,0 +1,142 @@
+# syntax=docker/sandbox-kit:3
+# This kit as a PREBUILT v3 mixin, replacing spec.yaml: the toolchain moves
+# out of create-time install hooks and into the layers, built by an ordinary
+# Dockerfile. Every v2 stanza lands somewhere deliberate; the deltas are
+# marked MIGRATION NOTE inline.
+#
+# What the conversion is worth, in one line: v2 asked for egress to PyPI and
+# three distribution mirrors because it installed the tools while the
+# sandbox came up. This asks for YouTube, because by then there is nothing
+# left to install.
+schemaVersion: "3"
+displayName: YouTube Transcript Toolkit
+description: >-
+  Adds yt-dlp, ffmpeg, and a VTT-to-text converter to a sandbox so an agent can
+  fetch YouTube videos, pull subtitles or audio, and turn them into clean plain
+  text for summarization or analysis. Layer it onto any agent kit.
+sourceUrl: https://github.com/shelajev/yt-transcript-sbx-kit
+
+# Every one of these ships in the overlay, so all of them are the
+# artifact's: Apache-2.0 is the kit's own code and its skill, Unlicense is
+# yt-dlp, PSF-2.0 the CPython the prefix carries, LGPL-2.1-or-later the
+# ffmpeg build, and GPL-2.0-or-later is mutagen, which arrives with
+# yt-dlp's recommended dependency set. A narrower list would misreport what
+# a consumer is pulling; the SBOM attestation carries the full closure,
+# this names it at the granularity a human reviews.
+licenses:
+  - Apache-2.0
+  - Unlicense
+  - PSF-2.0
+  - LGPL-2.1-or-later
+  - GPL-2.0-or-later
+
+kind: mixin
+
+# MIGRATION NOTE: v2's `name: yt-transcript` has no v3 counterpart —
+# identity is the reference a kit is consumed by. The name survives as the
+# capability this kit offers, which is the thing another kit could ask for.
+#
+# The two tool names beside it are deliberate. Publishing them means a
+# second kit shipping its own ffmpeg makes the set fail to resolve rather
+# than silently shadowing this one, and it lets a kit that needs a media
+# toolchain say `requires: ["ffmpeg >= 9"]` instead of hoping. The versions
+# follow the pins in the companion Dockerfile, which is where a bump
+# happens; ffmpeg's is the release its branch build derives from.
+version: "1.0.0"
+provides:
+  - yt-transcript@1.0.0
+  - yt-dlp@2026.8.19
+  - ffmpeg@9.0.1
+
+# No `requires`. The overlay is self-contained — its own interpreter, its
+# own static binaries — so the only thing it needs from a workload is the
+# platform floor every conforming runtime provides (SPEC-v3 §12: bash, a CA
+# store, the agent user at uid 1000). `requires` is a closed-set check
+# against what other kits in the composition *declare*, not a probe of the
+# base image, so `requires: ["python3"]` would not test whether a Python is
+# present — it would refuse every set that has no kit claiming to provide
+# one. The two real base constraints are architecture and libc, and they
+# live where images already state them: linux/amd64 and linux/arm64
+# manifests, glibc, with the Dockerfile failing loudly on anything else.
+#
+# Which is to say the supported base is "any conforming workload on those
+# platforms". Verified against three: docker/sandbox-templates (the agent
+# templates, which carry their own python3 and keep it), debian:trixie-slim
+# (no python3 at all), and the hardened dhi.io/debian-base:trixie (no
+# python3, no package manager, not even grep).
+#
+# `integrates` is the other half — "works with when present". These are the
+# agents whose skills directory this kit drops a symlink into, and naming
+# them puts the kit that ships the agent ahead of this one in composition
+# order, so the skills directory exists before the link lands in it. No
+# version constraint on either: any release of these that reads a
+# SKILL.md reads this one.
+integrates:
+  - claude
+  - codex
+
+capabilities:
+  # MIGRATION NOTE: v2's `network.allowedDomains` was one flat list, so the
+  # domains its install hooks needed were open to the running agent too. v3
+  # splits egress by phase — and this kit has no install phase at all,
+  # because nothing is fetched at create. Seven entries disappear rather
+  # than move: pypi.org and files.pythonhosted.org (yt-dlp came from PyPI),
+  # deb.debian.org, security.debian.org, archive.ubuntu.com,
+  # security.ubuntu.com and ports.ubuntu.com (ffmpeg came from apt). What is
+  # left is what the workflow itself reaches, which is the whole point of
+  # prebuilding: a supply chain that ran at build time cannot be reached
+  # from the agent's steady state, and does not have to be granted to it.
+  #
+  # @1 rather than @2, faithfully: v2 gated by host, every entry here is a
+  # bare host, and that is exactly what an @1 config is. @2 would let an
+  # entry name the methods and paths it admits, which is worth doing for an
+  # API a kit uses in one known way — but yt-dlp negotiates formats,
+  # players and caption tracks across a surface no honest list of paths
+  # describes, and a bound that has to be widened on every upstream change
+  # is a bound nobody trusts.
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          # YouTube pages + metadata
+          - www.youtube.com:443
+          - youtube.com:443
+          - m.youtube.com:443
+          # Media streams (video/audio fragments and playback redirects)
+          - "*.googlevideo.com"
+          # Thumbnails and channel artwork
+          - i.ytimg.com:443
+          - ytimg.com:443
+          - yt3.ggpht.com:443
+          # YouTube / Google Data APIs (metadata, caption listings)
+          - www.googleapis.com:443
+          - googleapis.com:443
+
+  # MIGRATION NOTE: v2's `agentContext` block, moved to a staged file. The
+  # body is the same guidance; `contentFile` keeps prose out of the manifest
+  # (SPEC-v3 §9.4 budgets the descriptor at 64 KiB) and the frontend
+  # rewrites the field to the in-image path it staged the body at, so a
+  # consumer never resolves a path relative to this directory. A mixin
+  # states no `filename`: the context-file profile belongs to the kit that
+  # owns the environment, and this one only contributes a body to it.
+  - type: com.docker.sandbox/agent-context@1
+    config:
+      contentFile: ./yt-transcript-context.md
+
+  # MIGRATION NOTE: v2's `commands.install` block — `apt-get update`,
+  # `apt-get install ffmpeg`, `pip install --break-system-packages yt-dlp`,
+  # `chmod +x vtt-to-text` — has no v3 counterpart here, on purpose. All
+  # four ran at every sandbox create; all four are now build steps in the
+  # companion Dockerfile. There is no `lifecycle@1` entry at all, so this
+  # kit's setup cannot fail at create, cannot be slow at create, and cannot
+  # produce a different toolchain on Tuesday than it did on Monday.
+  #
+  # NOT DECLARED, also on purpose: `agent-skills@1`. That capability asks
+  # the host to mount its shared skills store at a path, and this kit is on
+  # the other side of that exchange — it ships a skill rather than consuming
+  # the user's. Declaring it would ask for a bind mount over the very
+  # directory this kit's content lands in. The mount may well happen anyway,
+  # because the agent kit or the runtime asked for it, which is why the
+  # skill's body sits in the kit's prefix with only a symlink in the skills
+  # directory (see the companion Dockerfile).
+dockerfile: yt-transcript.dockerfile

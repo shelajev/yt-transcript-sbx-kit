@@ -29,7 +29,8 @@ tens of MB of temporary disk space.
 
 ## 1. Check prerequisites
 
-Run `command -v yt-dlp && command -v python3`. For illustrated modes, also run
+Run `command -v yt-dlp`. This skill's scripts carry their own interpreter, so no
+system `python3` is needed. For illustrated modes, also run
 `command -v ffmpeg && command -v ffprobe`. If a prerequisite is missing, name it and
 ask the user to run the `yt-transcript` kit. Do not use host package managers or
 modify the sandbox.

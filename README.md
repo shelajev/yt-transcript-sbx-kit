@@ -14,6 +14,13 @@ knows the tools are there and how to use them.
 
 Because it is a mixin, you layer it onto whichever agent kit you run.
 
+The toolchain is **prebuilt**: it arrives in the kit's layers rather than being
+installed while the sandbox comes up. Nothing is fetched at create, so there are
+no setup hooks to wait for or to fail, and the kit asks for no egress to PyPI or
+to a distribution mirror. It also never touches the workload's Python — `yt-dlp`
+and the converter run on an interpreter this kit carries, in its own prefix under
+`/opt/yt-transcript`. See [How it works](#how-it-works).
+
 ## Companion agent skill
 
 The kit includes a standalone `youtube-analyzer` skill at the agent-neutral
@@ -29,47 +36,32 @@ evidence, interpretation, and external verification separate.
 
 ## Quick start
 
-The transcript kit is a mixin: name the agent to run, then add this kit with
-`--kit`. Choose one of these examples.
-
-`claude`, `codex`, and the other names listed by `sbx run --help` are built-in
-agents, so they are positional arguments—not kit references. A `--kit` flag
-adds a declarative layer such as this toolchain or a custom agent kit. Do not
-write `--kit claude` or `--kit codex`.
-
-### Claude
+The transcript kit is a mixin: name the workload to run, then add this kit with
+`--kit`.
 
 ```bash
 sbx run --name yt-claude \
+  docker/sbx-kit-claude:2.1.273 \
   --kit git+https://github.com/shelajev/yt-transcript-sbx-kit.git \
-  claude .
+  .
 ```
 
-### Codex
+The positional argument is a **workload kit**, and that is a change from the
+earlier version of this kit. A composition needs exactly one `kind: workload`
+kit; the built-in agent names (`claude`, `codex`, and the rest listed by
+`sbx run --help`) are not kits, so naming one alongside this mixin is refused
+with `no workload kit in the set`. Any published v3 workload kit works as the
+base — swap the reference above for the agent you want.
+
+Kit v3 needs a release-candidate `sbx`; the stable line does not read it yet.
+See the [install notes](https://docs.docker.com/ai/sandboxes/install/) and
+[sbx-releases](https://github.com/docker/sbx-releases).
+
+Each `--name` creates a persistent sandbox. Reattach without supplying the
+workload or kits again:
 
 ```bash
-sbx run --name yt-codex \
-  --kit git+https://github.com/shelajev/yt-transcript-sbx-kit.git \
-  codex .
-```
-
-### Antigravity
-
-```bash
-sbx run --name yt-antigravity \
-  --kit git+https://github.com/shelajev/agy-sbx-kit.git \
-  --kit git+https://github.com/shelajev/yt-transcript-sbx-kit.git \
-  agy .
-```
-
-Antigravity asks you to complete its Google OAuth flow on first use; see the
-[Antigravity kit](https://github.com/shelajev/agy-sbx-kit) for that flow.
-
-Each `--name` creates a persistent sandbox. Reattach without supplying an agent
-or kits again:
-
-```bash
-sbx run --name yt-codex
+sbx run --name yt-claude
 ```
 
 ## What it does
@@ -98,18 +90,61 @@ Handy `yt-dlp` flags: `--list-subs` (see available caption tracks),
 
 ## How it works
 
-- **Install (once at sandbox creation):**
-  - `apt-get update`, then `apt-get install -y ffmpeg` — installs `ffmpeg` and
-    `ffprobe` in separate setup steps so both complete reliably.
-  - `pip install --upgrade --break-system-packages yt-dlp` — installs `yt-dlp`
-    on the sandbox's shared executable path. The flag is required by the
-    Debian/Python base image's PEP 668 protection; it affects only the isolated
-    sandbox.
-  - `chmod +x ~/.local/bin/vtt-to-text` — the converter shipped in this kit.
-- **Files:** `files/home/.local/bin/vtt-to-text` is copied into the sandbox home
-  directory so it lands on PATH.
-- **Agent context:** the usage notes above are appended to the agent's memory
-  file (e.g. `CLAUDE.md`) via `agentContext`.
+The kit is a v3 descriptor (`yt-transcript.yaml`) plus an ordinary Dockerfile
+(`yt-transcript.dockerfile`) that builds its content. There are no install hooks:
+the descriptor declares no lifecycle capability at all, because by the time a
+sandbox starts there is nothing left to install.
+
+Everything lives in one prefix, `/opt/yt-transcript`:
+
+| Path | What |
+| --- | --- |
+| `python/` | CPython 3.13, this kit's alone |
+| `python/.../site-packages/` | `yt-dlp` 2026.8.19 and its pinned dependencies |
+| `bin/` | static `ffmpeg` and `ffprobe` 9.0, and `vtt-to-text` |
+| `skills/` | the `youtube-analyzer` body, and the Claude shim |
+| `share/licences/` | ffmpeg's licence, since an image is a distribution |
+
+Outside that prefix the overlay writes only symlinks: `yt-dlp`, `ffmpeg`,
+`ffprobe` and `vtt-to-text` in `/usr/local/bin`, and one in each of
+`~/.agents/skills/` and `~/.claude/skills/` pointing at the skill in the prefix.
+
+Three things follow from that shape, and they are the reason for it:
+
+- **The workload's Python is untouched.** The old `pip install
+  --break-system-packages` worked, but it changed the environment's Python to add
+  a tool. `yt-dlp`, `vtt-to-text` and the skill's scripts run on the interpreter
+  in the prefix — their shebangs name it — so the kit also composes onto a
+  workload that has no `python3` at all.
+- **`ffmpeg` is static.** `apt-get install ffmpeg` would drop around ninety
+  shared objects into `/usr/lib` on a filesystem this kit does not own, and tie
+  the kit to one distribution's library versions. The build takes the LGPL
+  variant: it drops the x264/x265 encoders this workflow never uses, and keeps
+  the artifact out of GPL. `licenses:` in the descriptor reports everything that
+  ships.
+- **Everything is pinned.** Each binary is fetched by immutable URL and checked
+  against a `sha256` recorded in the Dockerfile; the Python closure is pinned by
+  yt-dlp's own `default` and `pin` extras (see `requirements.txt`). A rebuild
+  either produces the same closure or fails.
+
+The usage notes above still reach the agent's memory file (e.g. `CLAUDE.md`),
+now as the `agent-context@1` capability with the body in
+`yt-transcript-context.md`.
+
+### Building it
+
+The descriptor's `# syntax=` line dispatches the kit frontend, so a build is an
+ordinary `docker buildx build` and the result is an ordinary image:
+
+```bash
+docker buildx build . -f yt-transcript.yaml -t docker.io/me/sbx-kit-yt-transcript:1.0.0
+```
+
+The build tests what it ships before it finishes: both converters against a
+rolling-caption fixture, a synthesised clip transcoded and read back with
+`ffprobe`, audio extraction, frame capture through `extract_frames.sh`, and
+`embed_images.py` inlining the result. Pushed to a registry, the image is what
+`--kit` can name instead of this repository.
 
 ## Network policy
 
@@ -121,11 +156,16 @@ The kit allowlists only what the workflow needs:
 | Media streams | `*.googlevideo.com` |
 | Thumbnails / artwork | `i.ytimg.com`, `ytimg.com`, `yt3.ggpht.com` |
 | YouTube / Google Data APIs | `www.googleapis.com`, `googleapis.com` |
-| Tool install (yt-dlp) | `pypi.org`, `files.pythonhosted.org` |
-| Tool install (ffmpeg via apt) | `deb.debian.org`, `security.debian.org`, `archive.ubuntu.com`, `security.ubuntu.com`, `ports.ubuntu.com` |
+
+That is the whole list now. The seven entries the old version needed for tool
+installation — `pypi.org`, `files.pythonhosted.org`, and the Debian and Ubuntu
+mirrors — are gone rather than moved to an install phase: a supply chain that ran
+at build time cannot be reached from the running agent, so it does not have to be
+granted to it.
 
 If you need to reach other sites (a different video host, your own services),
-fork the kit and extend `network.allowedDomains` in `spec.yaml`.
+fork the kit and extend the `network-policy@1` allow list in
+`yt-transcript.yaml`.
 
 ## Smoke test
 
@@ -137,18 +177,23 @@ You should see a yt-dlp version, an ffmpeg banner, and the `vtt-to-text` usage l
 
 ## Local clone
 
-If you clone this repo, `run.sh` launches Claude with the local kit path. Pass
-the workspace as its first argument:
+If you clone this repo, `run.sh` launches the Claude workload kit with the local
+kit path. Pass the workspace as its first argument:
 
 ```bash
 ./run.sh .
 ```
 
-Use a different built-in agent by setting `SBX_AGENT`:
+Use a different workload by setting `SBX_WORKLOAD` to any published v3 workload
+kit:
 
 ```bash
-SBX_AGENT=codex ./run.sh .
+SBX_WORKLOAD=docker/sbx-kit-codex:0.60.0 ./run.sh .
 ```
+
+`sbx` builds the kit directory on demand and keys the result by source hash, so
+editing the descriptor or the Dockerfile and re-running rebuilds only what
+changed.
 
 ## License
 

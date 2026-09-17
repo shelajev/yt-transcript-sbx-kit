@@ -1,0 +1,17 @@
+# The Python closure the overlay carries, pinned.
+#
+# The v2 kit installed this at sandbox create with
+# `pip install --upgrade yt-dlp`, which is the right instruction for a
+# machine that can reach PyPI every time it starts. An image is built once
+# and run many times, so the version becomes a decision recorded here
+# instead of whatever the day of the build happened to offer.
+#
+# Two extras do the pinning. `default` is the dependency set yt-dlp's own
+# documentation recommends — brotli, certifi, mutagen, pycryptodomex,
+# requests, urllib3, websockets — and `pin` fixes each of them to the
+# version yt-dlp tested against, so the whole closure is pinned by naming
+# the extras rather than by maintaining a lock file beside them. Two of
+# them (brotli, pycryptodomex) are C extensions, which is why the install
+# runs on the target platform: pip resolves a wheel for the interpreter in
+# front of it.
+yt-dlp[default,pin]==2026.8.19
