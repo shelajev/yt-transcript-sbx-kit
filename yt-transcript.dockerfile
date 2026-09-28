@@ -41,9 +41,14 @@ ARG PREFIX=/opt/yt-transcript
 # resolves wheels for the interpreter in front of it, and two of yt-dlp's
 # dependencies are C extensions, so a cross-platform build runs the
 # install under emulation instead of guessing a wheel tag.
-FROM dhi.io/debian-base:trixie-dev AS build
+FROM dhi.io/debian-base:trixie-dev@sha256:f18a569e4ed47f382ef551fac547bddcaa050f74565dfe35ba73958810fb8525 AS build
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN apt-get update \
- && apt-get install -y --no-install-recommends bash ca-certificates curl xz-utils \
+ && apt-get install -y --no-install-recommends \
+      bash=5.2.37-2+dhi1 \
+      ca-certificates=20250419+dhi2 \
+      curl=8.14.1-2+deb13u5+dhi0 \
+      xz-utils=5.8.1-1+dhi1 \
  && rm -rf /var/lib/apt/lists/*
 
 # A private interpreter, not the workload's.
@@ -177,6 +182,7 @@ EOF
 # the real tools rather than a rehearsal — and they exercise the kit's own
 # scripts, not stand-ins. A kit that cannot convert subtitles or process
 # media must not publish.
+# hadolint ignore=DL3003
 RUN <<'EOF'
 set -eu
 export PATH="$PREFIX/bin:$PREFIX/python/bin:$PATH"
@@ -186,7 +192,13 @@ cd "$(mktemp -d)"
 # The smoke test from the README, verbatim.
 yt-dlp --version
 ffmpeg -version | head -1
-vtt-to-text 2>&1 | head -1
+set +e
+vtt_usage=$(vtt-to-text 2>&1)
+vtt_status=$?
+set -e
+test "$vtt_status" -eq 1
+test "$vtt_usage" = 'Usage: vtt-to-text <file.vtt> [output.txt]'
+printf '%s\n' "$vtt_usage"
 
 # Subtitle conversion, against the shape auto-captions arrive in: inline
 # word timings, and a cue the next one repeats. The repeat is a whole cue

@@ -36,13 +36,13 @@ evidence, interpretation, and external verification separate.
 
 ## Quick start
 
-The transcript kit is a mixin: name the workload to run, then add this kit with
-`--kit`.
+The transcript kit is a mixin: name the v3 workload to run, then add the
+published mixin with `--kit`.
 
 ```bash
-sbx run --name yt-claude \
-  docker/sbx-kit-claude:2.1.273 \
-  --kit git+https://github.com/shelajev/yt-transcript-sbx-kit.git \
+sbx run docker.io/docker/sbx-kit-shell:1.0.0 \
+  --name yt-shell \
+  --kit docker.io/olegselajev241/yt-transcript-sbx-kit:1.0.0 \
   .
 ```
 
@@ -53,15 +53,33 @@ kit; the built-in agent names (`claude`, `codex`, and the rest listed by
 with `no workload kit in the set`. Any published v3 workload kit works as the
 base — swap the reference above for the agent you want.
 
-Kit v3 needs a release-candidate `sbx`; the stable line does not read it yet.
-See the [install notes](https://docs.docker.com/ai/sandboxes/install/) and
-[sbx-releases](https://github.com/docker/sbx-releases).
+To run Antigravity with the transcript tools, compose the Agy workload with this
+mixin:
+
+```bash
+sbx run docker.io/olegselajev241/agy-sbx-kit:1.0.0 \
+  --name agy-youtube \
+  --kit docker.io/olegselajev241/yt-transcript-sbx-kit:1.0.0 \
+  .
+```
+
+Or make the composition explicit as a shell workload plus two mixins:
+
+```bash
+sbx run docker.io/docker/sbx-kit-shell:1.0.0 \
+  --name agy-youtube-shell \
+  --kit docker.io/olegselajev241/agy-sbx-kit-mixin:1.0.0 \
+  --kit docker.io/olegselajev241/yt-transcript-sbx-kit:1.0.0 \
+  .
+```
+
+Then run `agy` inside the shell.
 
 Each `--name` creates a persistent sandbox. Reattach without supplying the
 workload or kits again:
 
 ```bash
-sbx run --name yt-claude
+sbx run --name yt-shell
 ```
 
 ## What it does
@@ -170,14 +188,14 @@ fork the kit and extend the `network-policy@1` allow list in
 ## Smoke test
 
 ```bash
-sbx exec yt-claude -- sh -lc 'yt-dlp --version && ffmpeg -version | head -1 && vtt-to-text 2>&1 | head -1'
+sbx exec yt-shell -- sh -lc 'yt-dlp --version && ffmpeg -version | head -1 && vtt-to-text 2>&1 | head -1'
 ```
 
 You should see a yt-dlp version, an ffmpeg banner, and the `vtt-to-text` usage line.
 
 ## Local clone
 
-If you clone this repo, `run.sh` launches the Claude workload kit with the local
+If you clone this repo, `run.sh` launches the shell workload kit with the local
 kit path. Pass the workspace as its first argument:
 
 ```bash
@@ -188,7 +206,7 @@ Use a different workload by setting `SBX_WORKLOAD` to any published v3 workload
 kit:
 
 ```bash
-SBX_WORKLOAD=docker/sbx-kit-codex:0.60.0 ./run.sh .
+SBX_WORKLOAD=docker.io/olegselajev241/agy-sbx-kit:1.0.0 ./run.sh .
 ```
 
 `sbx` builds the kit directory on demand and keys the result by source hash, so

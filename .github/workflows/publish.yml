@@ -1,0 +1,53 @@
+name: Publish Kit v3
+
+# Publishing is release-only. Pull requests cannot start this workflow and
+# never receive the Docker Hub credential.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Check release version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          descriptor_version=$(sed -n 's/^version: "\([^"]*\)"/\1/p' yt-transcript.yaml)
+          test "$RELEASE_TAG" = "v$descriptor_version"
+          echo "VERSION=$descriptor_version" >> "$GITHUB_ENV"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Publish mixin
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: yt-transcript.yaml
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            docker.io/${{ vars.DOCKERHUB_USERNAME }}/yt-transcript-sbx-kit:${{ env.VERSION }}
+            docker.io/${{ vars.DOCKERHUB_USERNAME }}/yt-transcript-sbx-kit:latest
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
